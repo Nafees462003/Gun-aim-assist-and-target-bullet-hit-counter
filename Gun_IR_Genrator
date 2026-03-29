@@ -1,0 +1,70 @@
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+#include <IRrecv.h>
+#include <IRutils.h>
+#include <TFT_eSPI.h>
+
+#define IR_SEND_PIN 23
+#define IR_RECV_PIN 34
+
+IRsend irsend(IR_SEND_PIN);
+IRrecv irrecv(IR_RECV_PIN);
+decode_results results;
+
+TFT_eSPI tft = TFT_eSPI();
+unsigned int hitCount = 0;
+unsigned long lastSend = 0;
+
+void setup() {
+  Serial.begin(115200);
+  
+  // IR
+  irsend.begin();
+  irrecv.enableIRIn();
+
+  // TFT
+  tft.init();
+  tft.setRotation(1);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  tft.setTextSize(3);
+  tft.setCursor(20, 10);
+  tft.println("HITS:");
+  updateDisplay();
+}
+
+void loop() {
+  // --------- RECEIVE IR FROM NANO ---------
+  if (irrecv.decode(&results)) {
+    Serial.print("Received IR: ");
+    Serial.println(results.value, HEX);
+
+    if (results.value == 0xF12345) { // Nano trigger
+      hitCount++;
+       Serial.println(hitCount);
+
+      updateDisplay();
+
+      // Send back IR to Nano
+    
+    }
+
+    irrecv.resume();
+  }
+
+  // Optional: periodic IR send to Nano (not strictly needed)
+  
+  if (millis() - lastSend > 300) {
+    irsend.sendNEC(0xABCD12, 32);
+    lastSend = millis();
+  }
+  
+}
+
+void updateDisplay() {
+  tft.fillRect(20, 80, 200, 50, TFT_BLACK); // clear old number
+  tft.setCursor(20, 40);
+  tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+  tft.setTextSize(3);
+  tft.println(hitCount);
+}

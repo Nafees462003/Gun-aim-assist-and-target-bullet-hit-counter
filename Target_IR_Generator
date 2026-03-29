@@ -1,0 +1,43 @@
+#include <IRremote.h>
+
+#define SOUND_PIN 9      // Sound module input
+#define LED_PIN 5        // LED blink when hit
+
+IRsend irsend;          // use default pin 3 for IR LED
+IRrecv irrecv(11);       // TSOP IR receiver on pin 2
+decode_results results;
+
+bool lastSoundState = LOW;
+
+void setup() {
+  pinMode(SOUND_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  irrecv.enableIRIn();
+  Serial.begin(9600);
+}
+
+void loop() {
+  // --------- SOUND DETECTED → SEND IR ---------
+  bool currentSound = digitalRead(SOUND_PIN);
+  if (currentSound == HIGH && lastSoundState == LOW) {
+    irsend.sendNEC(0xF12345, 32);  // send IR
+    
+    delay(100); // debounce
+  }
+  lastSoundState = currentSound;
+
+  // --------- RECEIVE IR FROM ESP32 ---------
+  if (irrecv.decode(&results)) {
+   
+    Serial.println(results.value, HEX);
+
+    // ESP32 UNIQUE code
+    if (results.value == 0xABCD12) {
+      Serial.println("Hit! LED ON for 300ms");
+      digitalWrite(LED_PIN, HIGH);
+      delay(300);             // LED ON duration
+      digitalWrite(LED_PIN, LOW);
+    }
+    irrecv.resume();
+  }
+}
